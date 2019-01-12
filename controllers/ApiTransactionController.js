@@ -38,29 +38,39 @@ module.exports = {
         if (amount > config.TRANSACTIONTFMAX)
             response.format(401, null, res, 'maximum amount is ' + config.TRANSACTIONTFMAX);
 
-        Account.getAccountByAccountNumber(account_number, req, function (error, result) {
+        var account = Account.getAccountByUserId(req.user.user_id, function (error, result) {
             if (error)
                 response.format(500, error, res, result);
-
-            if (!result)
-                response.format(401, null, res, 'account number not found');
             else {
-                response.format(200, {
-                    'account_number': result.account_number,
-                    'fullname': result.fullname,
-                    'amount': amount,
-                    'message': message,
-                    'tf_token': crypto.encrypt(JSON.stringify({
-                        'account_number': result.account_number,
-                        'fullname': result.fullname,
-                        'amount': amount,
-                        'message': message,
-                        'expired_time': fn.addMinute(now, 10),
-                    }))
-                }, res);
-            }
-        })
+                if (result.account_number == account_number) {
+                    response.format(401, null, res, 'please choose other account number');
+                } else {
+                    Account.getAccountByAccountNumber(account_number, req, function (error, result) {
+                        if (error)
+                            response.format(500, error, res, result);
 
+                        if (result.length == 0)
+                            response.format(401, null, res, 'account number not found');
+                        else {
+                            response.format(200, {
+                                'account_number': result.account_number,
+                                'fullname': result.fullname,
+                                'amount': amount,
+                                'message': message,
+                                'tf_token': crypto.encrypt(JSON.stringify({
+                                    'account_number': result.account_number,
+                                    'fullname': result.fullname,
+                                    'amount': amount,
+                                    'message': message,
+                                    'expired_time': fn.addMinute(now, 10),
+                                }))
+                            }, res);
+
+                        }
+                    });
+                }
+            }
+        });
     },
     confirm: (req, res) => {
         var {tf_token, confirm} = req.body;
@@ -160,25 +170,28 @@ module.exports = {
             response.format(500, e, res);
         }
     },
-    history: (req, res) => {
-        var {order, transaction_type_id} = req.body;
-        Transaction.getTransactionHistory(req, order, transaction_type_id, function (error, result) {
-            if (error)
-                response.format(500, error, res);
-            else
-                response.format(200, result, res);
-        })
+    history:
+        (req, res) => {
+            var {order, transaction_type_id} = req.body;
+            Transaction.getTransactionHistory(req, order, transaction_type_id, function (error, result) {
+                if (error)
+                    response.format(500, error, res);
+                else
+                    response.format(200, result, res);
+            })
 
-    },
+        },
 
-    historyDetail: (req, res) => {
-        var {transaction_id} = req.body;
-        Transaction.getTransactionByTransactionId(req, transaction_id, function (error, result) {
-            if (error)
-                response.format(500, error, res);
-            else
-                response.format(200, result, res);
-        })
+    historyDetail:
+        (req, res) => {
+            var {transaction_id} = req.body;
+            Transaction.getTransactionByTransactionId(req, transaction_id, function (error, result) {
+                if (error)
+                    response.format(500, error, res);
+                else
+                    response.format(200, result, res);
+            })
 
-    },
-};
+        },
+}
+;
